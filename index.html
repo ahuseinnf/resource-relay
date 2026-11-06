@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resource center</title>
+<style>
+ body{font-family:Arial,Helvetica,sans-serif;max-width:720px;margin:48px auto;padding:0 16px;color:#222}
+ button{font-size:18px;padding:12px 22px;cursor:pointer}
+ #log{margin-top:24px;font:13px monospace;white-space:pre-wrap;color:#555}
+</style>
+</head>
+<body>
+<h2>Resource center</h2>
+<p id="msg">Loading&hellip;</p>
+<button id="go" hidden>Open resources</button>
+<div id="log"></div>
+<script>
+// Generic two-step link page. All configuration comes from the URL fragment, which browsers never send
+// to any server (including this one):  #<base64url(JSON)>
+//   { "m": "a" | "b",   // a = one button click opens "p" in a new tab, then after "w" ms this tab goes to "s"
+//                       // b = no click; this tab goes to "s" after "w" ms
+//     "p": "<url>",     // page opened in the new tab (mode a only)
+//     "s": "<url>",     // URL this tab navigates to (top-level GET)
+//     "w": 8000 }       // delay in ms
+(function () {
+  function log(s) {
+    var line = '[' + new Date().toISOString().substr(11, 8) + '] ' + s;
+    console.log('relay ' + line);
+    document.getElementById('log').textContent += line + '\n';
+  }
+  var msg = document.getElementById('msg'), btn = document.getElementById('go'), cfg;
+  try {
+    var f = location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/');
+    while (f.length % 4) f += '=';
+    cfg = JSON.parse(decodeURIComponent(escape(atob(f))));
+  } catch (e) { msg.textContent = 'No configuration in the link.'; return; }
+  var wait = typeof cfg.w === 'number' ? cfg.w : 8000;
+  log('mode=' + cfg.m + ' wait=' + wait + ' ms');
+  function go() { log('navigating this tab'); location.href = cfg.s; }
+  if (cfg.m === 'b') {
+    msg.textContent = 'Redirecting…';
+    setTimeout(go, wait);
+  } else {
+    msg.textContent = 'Click the button to open the resources.';
+    btn.hidden = false;
+    btn.addEventListener('click', function () {
+      var w = window.open(cfg.p, '_blank');
+      if (!w) { log('pop-up blocked - allow pop-ups for this page and click again'); return; }
+      log('opened new tab; continuing in ' + wait + ' ms');
+      btn.disabled = true;
+      setTimeout(go, wait);
+    });
+  }
+})();
+</script>
+</body>
+</html>
